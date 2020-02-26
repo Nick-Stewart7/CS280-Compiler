@@ -1,0 +1,52 @@
+Every class in the parse tree needs an evaluation function. Call it Eval.
+
+A symbol table is needed to map an identifier to a Val. This is best done with a map declared in main:
+
+map<string,Val> symbols;
+
+Pass a reference to it to the Eval method so that every class has access to the symbol table. The signature of the method in
+the base class looks like
+
+Val Eval(map<string,Val>& syms) const = 0;
+
+The "= 0" makes the function a "pure virtual" method and forces everyone to provide an implementation.
+
+The Val returned by an Eval() for one of the statements is unimportant, because statements have no Val that is carried along.
+
+For example, Eval() for StmtList can be
+
+Val Eval(map<string,Val>& symbols) {
+        left->Eval(symbols);
+        if( right )
+            right->Eval(symbols);
+        return Val();
+    }
+
+Eval for the operators can use the overloaded operator functions in Val, but you must handle errors. For example, PlusExpr could be:
+
+Val Eval(map<string,Val>& symbols) {
+        auto L = left->Eval(symbols);
+        if( L.isErr() )
+            runtime_err(linenum, L.GetErrMsg());
+        auto R = right->Eval(symbols);
+        if( R.isErr() )
+            runtime_err(linenum, R.GetErrMsg());
+
+        auto answer = L + R;
+        if( answer.isErr() )
+            runtime_err(linenum, answer.GetErrMsg());
+        
+        return answer;
+    }
+
+NOTE that runtime_err is a function I wrote that assembles a properly formatted string and throws it as an exception.
+
+Finally, note that the Eval for the Primary items are quite simple. For example, IConst is
+
+Val Eval(map<string,Val>& symbols) {
+        return Val(val);
+    }
+
+Note it simply makes the integer constant into a Val.
+
+The Eval for identifier is a symbol table lookup, and the Eval for Let makes a symbol table entry.
